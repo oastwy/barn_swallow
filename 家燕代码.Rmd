@@ -1,0 +1,195 @@
+---
+title: "家燕分析"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+date: "2024-06-05"
+---
+
+```{r}
+library(tidyr)
+library(dplyr)
+library(readr)
+library(readxl)
+library(MuMIn)
+library(lme4)
+library(lmerTest)
+
+#setwd("C:/Users/Yang/Dropbox/合著/家燕")
+setwd("/Users/wuyang/Dropbox/合著/家燕")
+data <- read_excel("副本迁徙特征比较8.27 无207.xlsx")
+data <- data %>% mutate(
+  性别 = ifelse (性别 == "雌性", "Female", "Male")
+)%>%
+  rename(Sex = 性别)
+data <- data %>%
+  rename(ID = 跟踪编号)
+
+```
+
+#迁徙距离 
+```{r}
+filtered_data <- data %>%
+  select(ID, Sex, Year, 春迁距离, 秋迁距离)
+   
+long_data <- filtered_data %>%
+  pivot_longer(cols = c(春迁距离, 秋迁距离), names_to = "variable", values_to = "Distance") %>%
+  mutate(season = ifelse(variable == "春迁距离", "Spring", "Autumn")) %>%
+  select(-variable)%>%
+  drop_na()  
+
+long_data$Distance <- log(long_data$Distance)
+distance <- glm(Distance ~ season * Sex + Year, data = long_data, family = gaussian())
+
+summary(distance)
+
+distance_random<- lmer(Distance ~ season * Sex + Year + (1 | ID), data = long_data)
+
+summary(distance_random)
+
+fitted_values <- fitted(distance_random)
+residuals <- residuals(distance_random)
+plot(residuals, main = "Residuals of the Model")
+
+# Visual Inspection
+
+# Histogram
+hist(residuals, main = "Histogram of Residuals", xlab = "Residuals", breaks = 20)
+
+# Q-Q Plot
+qqnorm(residuals)
+qqline(residuals, col = "red")
+shapiro_test <- shapiro.test(residuals)
+print(shapiro_test)
+
+plot(fitted_values, residuals, main = "Fitted Values vs Residuals",
+     xlab = "Fitted Values", ylab = "Residuals")
+abline(h = 0, col = "red")
+
+
+
+```
+
+#迁徙时长
+```{r}
+
+filtered_data <- data %>%
+  dplyr:: select(ID,Sex, Year, "春迁时长（TL）", "秋迁时长（TL）")
+
+
+long_data <- filtered_data %>%
+  pivot_longer(cols = c("春迁时长（TL）", "秋迁时长（TL）"), names_to = "variable", values_to = "Duration") %>%
+  mutate(season = ifelse(variable == "春迁时长（TL）", "Spring", "Autumn")) %>%
+  select(-variable)%>%
+  drop_na() 
+
+
+
+duration <- glm(Duration ~ season * Sex +Year , data = long_data, family = gaussian())
+
+Duration_random<- lmer(Duration ~ season * Sex + Year + (1 | ID), data = long_data)
+
+summary(Duration_random)
+
+fitted_values <- fitted(Duration_random)
+residuals <- residuals(Duration_random)
+plot(residuals, main = "Residuals of the Model")
+# Histogram
+hist(residuals, main = "Histogram of Residuals", xlab = "Residuals", breaks = 20)
+
+# Q-Q Plot
+qqnorm(residuals)
+qqline(residuals, col = "red")
+shapiro_test <- shapiro.test(residuals)
+print(shapiro_test)
+
+plot(fitted_values, residuals, main = "Fitted Values vs Residuals",
+     xlab = "Fitted Values", ylab = "Residuals")
+abline(h = 0, col = "red")
+
+
+
+```
+#迁徙速度
+```{r}
+
+
+filtered_data <- data %>%
+  select(ID, Sex, Year, "迁徙速度（春季）", "迁徙速度（秋季）")
+
+
+long_data <- filtered_data %>%
+  pivot_longer(cols = c("迁徙速度（春季）", "迁徙速度（秋季）"), names_to = "variable", values_to = "Speed") %>%
+  mutate(season = ifelse(variable == "迁徙速度（春季）", "Spring", "Autumn")) %>%
+  select(-variable)%>%
+  drop_na() 
+
+
+
+Speed <- glm(Speed ~ season * Sex + Year, data = long_data, family = gaussian())
+
+summary(Speed)
+
+Speed_random<- lmer(Speed  ~ season * Sex + Year + (1 | ID), data = long_data)
+
+summary(Speed_random)
+
+fitted_values <- fitted(Speed_random)
+residuals <- residuals(Speed_random)
+plot(residuals, main = "Residuals of the Model")
+# Histogram
+hist(residuals, main = "Histogram of Residuals", xlab = "Residuals", breaks = 20)
+
+# Q-Q Plot
+qqnorm(residuals)
+qqline(residuals, col = "red")
+shapiro_test <- shapiro.test(residuals)
+print(shapiro_test)
+
+plot(fitted_values, residuals, main = "Fitted Values vs Residuals",
+     xlab = "Fitted Values", ylab = "Residuals")
+abline(h = 0, col = "red")
+
+
+```
+
+
+#离开时间和到达时间
+```{r}
+filtered_data <- data %>%
+  select(ID, Sex, Year, "返回繁殖地标准日期", "离开繁殖地标准日期")
+
+long_data <- filtered_data %>%
+  pivot_longer(cols = c("返回繁殖地标准日期", "离开繁殖地标准日期"), names_to = "variable", values_to = "Duration") %>%
+  mutate(season = ifelse(variable == "返回繁殖地标准日期", "Spring", "Autumn")) %>%
+  select(-variable)%>%
+  drop_na() 
+
+spring <- data[!is.na(data$返回繁殖地标准日期), ]
+spring_model <- glm(返回繁殖地标准日期 ~ Sex + Year, data = spring , family = gaussian())
+summary(spring_model)
+
+
+
+
+autunm <- data[!is.na(data$离开繁殖地标准日期), ]
+autumn_model<- glm(离开繁殖地标准日期 ~ Sex + Year, data = autunm , family = gaussian())
+summary(autumn_model)
+
+
+```
+# 没法做spring_random<- lmer(返回繁殖地标准日期   ~  Sex + Year + (1 | ID), data = spring) 
+#Error: number of levels of each grouping factor must be < number of observations (problems: ID)
+
+```
+
+#重捕率 表格没有id
+```{r}
+recap <- read_csv("~/Dropbox/合著/家燕/副本table2.csv")
+
+full_model <- glm(recapture ~ sex* geolocator, data = recap, family = binomial)
+summary(full_model)
+
+```
+
